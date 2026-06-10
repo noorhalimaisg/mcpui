@@ -264,6 +264,7 @@ function createWindow() {
     minWidth: 720,
     minHeight: 520,
     title: 'MCP Manager for Claude Desktop',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     backgroundColor: '#0f1419',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
