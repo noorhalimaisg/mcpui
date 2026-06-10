@@ -48,9 +48,8 @@ body {
 .brand-mark {
   width: 40px; height: 40px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), #ff8a3d);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 13px; letter-spacing: 0.5px; color: #fff;
+  object-fit: cover;
+  display: block;
 }
 .brand-text h1 { margin: 0; font-size: 17px; font-weight: 700; }
 .subtitle { color: var(--text-dim); font-size: 12px; }
