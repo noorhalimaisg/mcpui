@@ -11,10 +11,16 @@ Built with **Electron** and packaged with **electron-builder**.
 
 ## What it does
 
-- **Auto-locates** `claude_desktop_config.json` on any OS:
+- **Auto-locates** `claude_desktop_config.json` on any OS, including both Windows
+  install types. It checks a list of candidate paths and uses the first that
+  exists (or the most likely creation target):
   - macOS — `~/Library/Application Support/Claude/claude_desktop_config.json`
-  - Windows — `%APPDATA%\Claude\claude_desktop_config.json`
   - Linux — `~/.config/Claude/claude_desktop_config.json`
+  - Windows (`.exe` installer) — `%APPDATA%\Claude\claude_desktop_config.json`
+  - Windows (**Microsoft Store / MSIX**) — `%LOCALAPPDATA%\Packages\Claude_<hash>\LocalCache\Roaming\Claude\claude_desktop_config.json`
+    (the Store build sandboxes `%APPDATA%`; the `Claude_*` package hash is matched automatically)
+- If your install lives somewhere unusual, use **Choose file…** to point the tool
+  at the exact `claude_desktop_config.json`.
 - Lists your existing `mcpServers` as editable cards (the on-disk object is
   converted to an array internally for stable ordering).
 - Add / edit / delete servers with editors for **command**, **args** (one per

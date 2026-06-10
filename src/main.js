@@ -8,16 +8,70 @@ const core = require('./config-core');
 // ---------------------------------------------------------------------------
 // Config location
 //
-// app.getPath('appData') resolves to the correct per-user config root on every
-// OS, so we never hard-code platform paths:
-//   macOS   -> ~/Library/Application Support
-//   Windows -> %APPDATA% (Roaming)
-//   Linux   -> ~/.config
-// The Claude Desktop config file always lives in a "Claude" subfolder.
+// There is no single fixed path, because Claude Desktop stores its config
+// differently depending on how it was installed:
+//
+//   macOS                  -> ~/Library/Application Support/Claude/
+//   Linux                  -> ~/.config/Claude/
+//   Windows (.exe installer) -> %APPDATA%\Claude\
+//   Windows (Microsoft Store / MSIX) -> the package container virtualizes
+//        %APPDATA%, so the file lives at
+//        %LOCALAPPDATA%\Packages\Claude_<publisherHash>\LocalCache\Roaming\Claude\
+//
+// So instead of hard-coding one path we build a list of CANDIDATES per OS and
+// pick the first that exists (falling back to the most likely creation target).
+// The Store path's <publisherHash> is globbed (Claude_*) so we don't depend on
+// the exact hash.
 // ---------------------------------------------------------------------------
 
+const CONFIG_FILE = 'claude_desktop_config.json';
+
+function configCandidates() {
+  const home = app.getPath('home');
+  const plt = process.platform;
+
+  if (plt === 'darwin') {
+    return [path.join(home, 'Library', 'Application Support', 'Claude', CONFIG_FILE)];
+  }
+  if (plt === 'linux') {
+    return [path.join(home, '.config', 'Claude', CONFIG_FILE)];
+  }
+
+  // Windows.
+  const candidates = [];
+  const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+  // 1) Standard .exe installer.
+  candidates.push(path.join(appData, 'Claude', CONFIG_FILE));
+
+  // 2) Microsoft Store / MSIX packaged install (any publisher hash).
+  const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+  const packagesDir = path.join(localAppData, 'Packages');
+  try {
+    for (const entry of fs.readdirSync(packagesDir)) {
+      if (entry.toLowerCase().startsWith('claude')) {
+        candidates.push(
+          path.join(packagesDir, entry, 'LocalCache', 'Roaming', 'Claude', CONFIG_FILE)
+        );
+      }
+    }
+  } catch (_) {
+    /* Packages dir not present/readable — fine */
+  }
+  return candidates;
+}
+
+// The path we use when there is no manual override: an existing config wins;
+// otherwise the first candidate whose parent "Claude" folder already exists
+// (so a Store-only machine creates the file in the right place); else the very
+// first candidate.
 function defaultConfigPath() {
-  return path.join(app.getPath('appData'), 'Claude', 'claude_desktop_config.json');
+  const candidates = configCandidates();
+  let creationFallback = null;
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+    if (!creationFallback && fs.existsSync(path.dirname(c))) creationFallback = c;
+  }
+  return creationFallback || candidates[0];
 }
 
 // A tiny settings file (in our OWN userData dir, never Claude's) so a manually
@@ -74,12 +128,16 @@ function readRoot(configPath) {
 
 function handleLocate() {
   const configPath = activeConfigPath();
+  // Report which candidate locations were detected, so the user can see whether
+  // a Store vs standard install was found (and pick another via "Choose file").
+  const candidates = configCandidates().map((p) => ({ path: p, exists: fs.existsSync(p) }));
   return {
     path: configPath,
     isDefault: !readOverridePath(),
     defaultPath: defaultConfigPath(),
     exists: fs.existsSync(configPath),
     platform: process.platform,
+    candidates,
   };
 }
 
