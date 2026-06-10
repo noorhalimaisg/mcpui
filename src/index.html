@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Content Security Policy: no remote code, no inline event handlers needed. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;" />
+  <title>MCP Manager for Claude Desktop</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">MCP</div>
+      <div class="brand-text">
+        <h1>MCP Manager</h1>
+        <span class="subtitle">Claude Desktop server endpoints</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-reload" class="btn ghost" title="Reload from disk">Reload</button>
+      <button id="btn-add" class="btn primary">+ Add server</button>
+    </div>
+  </header>
+
+  <section class="path-bar">
+    <div class="path-info">
+      <span class="path-label">Config file</span>
+      <code id="config-path" class="path-value">Locating…</code>
+      <span id="path-status" class="badge"></span>
+    </div>
+    <div class="path-actions">
+      <button id="btn-open-folder" class="btn tiny ghost">Open folder</button>
+      <button id="btn-choose" class="btn tiny ghost">Choose file…</button>
+      <button id="btn-reset-path" class="btn tiny ghost hidden">Use default</button>
+    </div>
+  </section>
+
+  <main id="main">
+    <div id="preserved-note" class="preserved-note hidden"></div>
+    <div id="list" class="server-list"></div>
+    <div id="empty" class="empty hidden">
+      <p>No MCP servers configured.</p>
+      <button id="btn-add-empty" class="btn primary">+ Add your first server</button>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div id="dirty-indicator" class="dirty-indicator"></div>
+    <div class="footer-actions">
+      <button id="btn-discard" class="btn ghost" disabled>Discard changes</button>
+      <button id="btn-save" class="btn primary" disabled>Save to Claude Desktop</button>
+    </div>
+  </footer>
+
+  <!-- Edit / Add modal -->
+  <div id="modal" class="modal-overlay hidden">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2 id="modal-title">Add server</h2>
+
+      <label class="field">
+        <span class="field-label">Server name <em>(unique key)</em></span>
+        <input id="f-name" type="text" placeholder="e.g. my-server" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Command</span>
+        <input id="f-command" type="text" placeholder="e.g. npx" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Arguments <em>(one per line)</em></span>
+        <textarea id="f-args" rows="6" placeholder="mcp-remote&#10;https://example.com/mcp&#10;--header&#10;Authorization: Bearer TOKEN"></textarea>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Environment variables <em>(KEY=VALUE, one per line)</em></span>
+        <textarea id="f-env" rows="3" placeholder="API_KEY=abc123"></textarea>
+      </label>
+
+      <div id="f-extra-note" class="extra-note hidden"></div>
+
+      <div id="modal-error" class="modal-error hidden"></div>
+
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn ghost">Cancel</button>
+        <button id="modal-ok" class="btn primary">Save server</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

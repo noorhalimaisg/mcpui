@@ -1,0 +1,14 @@
+'use strict';
+
+const { contextBridge, ipcRenderer } = require('electron');
+
+// Expose a minimal, explicit API to the renderer. The renderer never gets
+// direct Node/fs access — it can only call these vetted channels.
+contextBridge.exposeInMainWorld('api', {
+  locate: () => ipcRenderer.invoke('config:locate'),
+  read: () => ipcRenderer.invoke('config:read'),
+  save: (servers) => ipcRenderer.invoke('config:save', servers),
+  chooseFile: () => ipcRenderer.invoke('config:choose'),
+  resetPath: () => ipcRenderer.invoke('config:resetPath'),
+  openFolder: () => ipcRenderer.invoke('config:openFolder'),
+});
