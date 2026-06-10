@@ -31,9 +31,12 @@ jobs:
       - name: Build installer
         # Unsigned builds for now. Disabling auto-discovery stops electron-builder
         # from trying (and failing) to sign on the macOS runner.
+        # --publish never: only build here. Publishing to a Release is handled by
+        # the separate `release` job below; without this, electron-builder tries
+        # to auto-publish on CI and fails demanding a GH_TOKEN.
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: npm run dist
+        run: npm run dist -- --publish never
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
