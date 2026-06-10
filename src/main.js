@@ -253,6 +253,16 @@ function handleOpenFolder() {
   return { ok: true };
 }
 
+// Open an external link in the user's default browser. Only http/https is
+// allowed, so the renderer can never use this to launch arbitrary protocols.
+function handleOpenExternal(_event, url) {
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+    return { ok: false, error: 'Only http/https links can be opened.' };
+  }
+  shell.openExternal(url);
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Window + app lifecycle
 // ---------------------------------------------------------------------------
@@ -284,6 +294,7 @@ app.whenReady().then(() => {
   ipcMain.handle('config:choose', handleChoose);
   ipcMain.handle('config:resetPath', handleResetPath);
   ipcMain.handle('config:openFolder', handleOpenFolder);
+  ipcMain.handle('shell:openExternal', handleOpenExternal);
 
   createWindow();
 

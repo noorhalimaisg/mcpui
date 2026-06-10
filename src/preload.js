@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('api', {
   chooseFile: () => ipcRenderer.invoke('config:choose'),
   resetPath: () => ipcRenderer.invoke('config:resetPath'),
   openFolder: () => ipcRenderer.invoke('config:openFolder'),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 });

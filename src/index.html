@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Content Security Policy: no remote code, no inline event handlers needed. -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:;" />
   <title>MCP Manager for Claude Desktop</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body data-tab="servers">
+  <!-- Header -->
   <header class="app-header">
     <div class="brand">
       <img class="brand-mark" src="icon.png" alt="MCP Manager" />
@@ -18,37 +18,165 @@
       </div>
     </div>
     <div class="header-actions">
-      <button id="btn-reload" class="btn ghost" title="Reload from disk">Reload</button>
-      <button id="btn-add" class="btn primary">+ Add server</button>
+      <button id="btn-reload" class="btn ghost icon-btn" title="Reload from disk">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+        Reload
+      </button>
+      <button id="btn-add" class="btn primary icon-btn">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M12 5v14M5 12h14"/></svg>
+        Add server
+      </button>
     </div>
   </header>
 
-  <section class="path-bar">
-    <div class="path-info">
-      <span class="path-label">Config file</span>
-      <code id="config-path" class="path-value">Locating…</code>
-      <span id="path-status" class="badge"></span>
-    </div>
-    <div class="path-actions">
-      <button id="btn-open-folder" class="btn tiny ghost">Open folder</button>
-      <button id="btn-choose" class="btn tiny ghost">Choose file…</button>
-      <button id="btn-reset-path" class="btn tiny ghost hidden">Use default</button>
-    </div>
-  </section>
+  <!-- Tabs -->
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="servers" role="tab">
+      <svg viewBox="0 0 24 24" class="ic"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 7h.01M7 17h.01"/></svg>
+      Servers
+    </button>
+    <button class="tab" data-tab="faq" role="tab">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/></svg>
+      FAQ
+    </button>
+    <button class="tab" data-tab="support" role="tab">
+      <svg viewBox="0 0 24 24" class="ic"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 21l1.9-4.1A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z"/></svg>
+      Support
+    </button>
+  </nav>
 
-  <main id="main">
-    <div id="preserved-note" class="preserved-note hidden"></div>
-    <div id="list" class="server-list"></div>
-    <div id="empty" class="empty hidden">
-      <p>No MCP servers configured.</p>
-      <button id="btn-add-empty" class="btn primary">+ Add your first server</button>
-    </div>
+  <!-- Content -->
+  <main class="content">
+    <!-- SERVERS PANEL -->
+    <section id="panel-servers" class="panel">
+      <div class="config-bar">
+        <span class="config-label">Config</span>
+        <code id="config-path" class="path-value">Locating…</code>
+        <span id="path-status" class="badge"></span>
+        <button id="btn-open-folder" class="btn tiny ghost">Open folder</button>
+        <button id="btn-choose" class="btn tiny ghost">Choose…</button>
+        <button id="btn-reset-path" class="btn tiny ghost hidden">Use default</button>
+      </div>
+
+      <div id="preserved-note" class="preserved-note hidden"></div>
+
+      <div id="servers-count" class="servers-count hidden"></div>
+      <div id="list" class="server-list"></div>
+
+      <div id="empty" class="empty hidden">
+        <p>No MCP servers configured.</p>
+        <button id="btn-add-empty" class="btn primary">+ Add your first server</button>
+      </div>
+    </section>
+
+    <!-- FAQ PANEL -->
+    <section id="panel-faq" class="panel hidden">
+      <h2 class="panel-title">Frequently asked questions</h2>
+      <p class="panel-sub">The essentials for managing your Claude Desktop endpoints.</p>
+
+      <div class="accordion">
+        <div class="acc-item open">
+          <button class="acc-head">What is an MCP server?<svg viewBox="0 0 24 24" class="chev"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body">
+            <p>A Model Context Protocol endpoint that lets Claude Desktop reach an external tool or data source — search, a CMS, an API. Each row here is one endpoint Claude can call.</p>
+          </div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head">Where is my configuration stored?<svg viewBox="0 0 24 24" class="chev"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body">
+            <p>In Claude Desktop's <code>claude_desktop_config.json</code>. This tool auto-locates it:</p>
+            <ul>
+              <li><strong>macOS</strong> — <code>~/Library/Application Support/Claude/</code></li>
+              <li><strong>Windows (installer)</strong> — <code>%APPDATA%\Claude\</code></li>
+              <li><strong>Windows (Microsoft Store)</strong> — <code>%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\</code></li>
+              <li><strong>Linux</strong> — <code>~/.config/Claude/</code></li>
+            </ul>
+            <p>The exact file in use is shown in the <strong>Config</strong> bar on the Servers tab.</p>
+          </div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head">Will this tool touch my other settings?<svg viewBox="0 0 24 24" class="chev"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body">
+            <p>No. It only ever reads and writes the <code>mcpServers</code> key. Every other top-level setting (such as <code>coworkUserFilesPath</code> and <code>preferences</code>) and any unknown per-server fields are preserved exactly. A timestamped backup is written before every save, and writes are atomic.</p>
+          </div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head">Are my API tokens stored securely?<svg viewBox="0 0 24 24" class="chev"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body">
+            <p>Your tokens live only in your local <code>claude_desktop_config.json</code> — exactly where Claude Desktop already keeps them. This tool reads and writes that file on your machine and sends nothing anywhere else.</p>
+          </div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head">A server isn't connecting — what should I check?<svg viewBox="0 0 24 24" class="chev"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="acc-body">
+            <p>Work through these:</p>
+            <ul>
+              <li><strong>Restart Claude Desktop</strong> after saving — changes only load on restart.</li>
+              <li>Check the endpoint URL and the authorization token/header are correct.</li>
+              <li>For <code>npx mcp-remote</code> servers, make sure Node.js is installed and the machine has network access.</li>
+              <li>Open the config in its folder (Servers → Open folder) to confirm the entry looks right.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUPPORT PANEL -->
+    <section id="panel-support" class="panel hidden">
+      <h2 class="panel-title">Support</h2>
+      <p class="panel-sub">Need help managing your Claude Desktop endpoints?</p>
+
+      <div class="support-links">
+        <a class="support-link" data-href="https://support.aisingapore.org">
+          <div class="sl-icon">
+            <svg viewBox="0 0 24 24" class="ic"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 21l1.9-4.1A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z"/></svg>
+          </div>
+          <div class="sl-text">
+            <span class="sl-title">AI Singapore Support</span>
+            <span class="sl-sub">support.aisingapore.org</span>
+          </div>
+          <svg viewBox="0 0 24 24" class="sl-ext"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </a>
+
+        <a class="support-link" data-href="https://github.com/noorhalimaisg/mcpui/issues">
+          <div class="sl-icon">
+            <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+          </div>
+          <div class="sl-text">
+            <span class="sl-title">Report an issue</span>
+            <span class="sl-sub">github.com/noorhalimaisg/mcpui/issues</span>
+          </div>
+          <svg viewBox="0 0 24 24" class="sl-ext"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </a>
+
+        <a class="support-link" data-href="https://github.com/noorhalimaisg/mcpui#readme">
+          <div class="sl-icon">
+            <svg viewBox="0 0 24 24" class="ic"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div class="sl-text">
+            <span class="sl-title">Documentation</span>
+            <span class="sl-sub">README on GitHub</span>
+          </div>
+          <svg viewBox="0 0 24 24" class="sl-ext"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </a>
+      </div>
+
+      <div class="support-tip">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/><path d="M9 21h6"/></svg>
+        <span>After saving changes, <strong>restart Claude Desktop</strong> for them to take effect.</span>
+      </div>
+    </section>
   </main>
 
-  <footer class="app-footer">
+  <!-- Footer (Servers tab only) -->
+  <footer class="app-footer" id="footer">
     <div id="dirty-indicator" class="dirty-indicator"></div>
     <div class="footer-actions">
-      <button id="btn-discard" class="btn ghost" disabled>Discard changes</button>
+      <button id="btn-discard" class="btn ghost" disabled>Discard</button>
       <button id="btn-save" class="btn primary" disabled>Save to Claude Desktop</button>
     </div>
   </footer>
@@ -79,10 +207,11 @@
       </label>
 
       <div id="f-extra-note" class="extra-note hidden"></div>
-
       <div id="modal-error" class="modal-error hidden"></div>
 
       <div class="modal-actions">
+        <button id="modal-delete" class="btn danger hidden">Delete server</button>
+        <span class="spacer"></span>
         <button id="modal-cancel" class="btn ghost">Cancel</button>
         <button id="modal-ok" class="btn primary">Save server</button>
       </div>
