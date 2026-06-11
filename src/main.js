@@ -12,9 +12,12 @@ const core = require('./config-core');
 //   2. An online catalog served by the AISG WordPress "MCP Catalog" plugin
 //      (GET /wp-json/mcp-catalog/v1/catalog), which holds everything else and
 //      can be updated without shipping a new app version.
-// The AISG MCP Catalog WordPress endpoint (public read). Override per-machine
-// via the "catalogUrl" key in the app's mcpui-settings.json. Empty = bundled only.
-const DEFAULT_CATALOG_URL = 'https://support.aisingapore.org/wp-json/mcp-catalog/v1/catalog';
+// The AISG MCP Catalog WordPress endpoint. The api_key is intentionally baked
+// in (decision: the catalog holds no secrets, only {token} placeholders, so a
+// readable key is acceptable). Override per-machine via the "catalogUrl" key in
+// the app's mcpui-settings.json. NOTE: this key is therefore public in the repo
+// — rotate it in wp-admin (MCP Catalog → API Access) if it must ever be private.
+const DEFAULT_CATALOG_URL = 'https://support.aisingapore.org/wp-json/mcp-catalog/v1/catalog?api_key=mcpcat_F9Z76ecPQZb6QOrFPJ3dpZD9zsOzvOZMBS54F331';
 
 // ---------------------------------------------------------------------------
 // Config location
