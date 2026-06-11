@@ -12,4 +12,6 @@ contextBridge.exposeInMainWorld('api', {
   resetPath: () => ipcRenderer.invoke('config:resetPath'),
   openFolder: () => ipcRenderer.invoke('config:openFolder'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  listBackups: () => ipcRenderer.invoke('backups:list'),
+  restoreBackup: (id) => ipcRenderer.invoke('backups:restore', id),
 });

@@ -33,6 +33,8 @@ const el = {
   fExtraNote: $('f-extra-note'),
   modalError: $('modal-error'),
   toast: $('toast'),
+  backupsList: $('backups-list'),
+  backupsEmpty: $('backups-empty'),
 };
 
 // ---------------------------------------------------------------------------
@@ -98,6 +100,67 @@ function switchTab(name) {
   document.querySelectorAll('.panel').forEach((p) =>
     p.classList.toggle('hidden', p.id !== `panel-${name}`)
   );
+  if (name === 'backups') loadBackups();
+}
+
+// ---------------------------------------------------------------------------
+// Backups
+// ---------------------------------------------------------------------------
+function formatWhen(ms) {
+  if (!ms) return 'Unknown time';
+  try {
+    return new Date(ms).toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  } catch (_) { return 'Unknown time'; }
+}
+
+async function loadBackups() {
+  const res = await window.api.listBackups();
+  const items = (res && res.items) || [];
+  el.backupsList.innerHTML = '';
+
+  if (items.length === 0) {
+    el.backupsEmpty.classList.remove('hidden');
+    return;
+  }
+  el.backupsEmpty.classList.add('hidden');
+
+  items.forEach((b, i) => {
+    const row = document.createElement('div');
+    row.className = 'backup-row';
+    const count = b.serverCount == null ? '—' : b.serverCount;
+    const names = (b.serverNames || []).slice(0, 4).join(', ')
+      + ((b.serverNames || []).length > 4 ? ', …' : '');
+    row.innerHTML = `
+      <div class="backup-icon">
+        <svg viewBox="0 0 24 24" class="ic"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/></svg>
+      </div>
+      <div class="backup-main">
+        <div class="backup-when">${escapeHtml(formatWhen(b.mtimeMs))}${i === 0 ? '<span class="backup-latest">Most recent</span>' : ''}</div>
+        <div class="backup-sub">${count} server${count === 1 ? '' : 's'}${names ? ' · <code>' + escapeHtml(names) + '</code>' : ''}</div>
+      </div>
+      <button class="btn tiny ghost" data-restore="${escapeHtml(b.id)}">Restore</button>
+    `;
+    el.backupsList.appendChild(row);
+  });
+
+  el.backupsList.querySelectorAll('[data-restore]').forEach((btn) =>
+    btn.addEventListener('click', () => restoreBackup(btn.dataset.restore))
+  );
+}
+
+async function restoreBackup(id) {
+  if (!confirm('Restore this backup?\n\nYour current servers will be replaced with this version (a backup of the current state is saved first, so this is also undoable). Restart Claude Desktop afterwards to apply.')) {
+    return;
+  }
+  const res = await window.api.restoreBackup(id);
+  if (!res.ok) { showToast(res.error || 'Restore failed.', 'err'); return; }
+  await loadFromDisk();      // refresh the Servers view from the restored file
+  await loadBackups();       // the restore added a new snapshot
+  switchTab('servers');
+  showToast(`Restored ${res.count} server(s). Restart Claude Desktop to apply.`, 'ok');
 }
 
 // ---------------------------------------------------------------------------

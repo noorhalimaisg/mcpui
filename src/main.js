@@ -162,6 +162,143 @@ function handleRead() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// In-app backup store
+//
+// Every save (and every restore) snapshots the FULL config file as it was just
+// before the change, into our own userData dir. We keep only the newest
+// MAX_BACKUPS and purge the oldest, so the user always has a short rollback
+// history without cluttering Claude's folder or growing unbounded.
+// Filenames are ISO timestamps (": ." replaced with "-") so they sort
+// chronologically as plain strings.
+// ---------------------------------------------------------------------------
+
+const MAX_BACKUPS = 10;
+
+function backupsDir() {
+  return path.join(app.getPath('userData'), 'backups');
+}
+
+function listBackupFiles() {
+  try {
+    return fs
+      .readdirSync(backupsDir())
+      .filter((f) => /^backup-.*\.json$/.test(f))
+      .sort(); // oldest first (lexicographic == chronological)
+  } catch (_) {
+    return [];
+  }
+}
+
+function pruneBackups() {
+  const files = listBackupFiles();
+  while (files.length > MAX_BACKUPS) {
+    const oldest = files.shift();
+    try {
+      fs.unlinkSync(path.join(backupsDir(), oldest));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+}
+
+// Store the given raw config text as a new backup, then prune to MAX_BACKUPS.
+function storeBackup(rawText) {
+  fs.mkdirSync(backupsDir(), { recursive: true });
+  let stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  let file = path.join(backupsDir(), `backup-${stamp}.json`);
+  // Guard against same-millisecond collisions.
+  let n = 1;
+  while (fs.existsSync(file)) {
+    file = path.join(backupsDir(), `backup-${stamp}-${n++}.json`);
+  }
+  fs.writeFileSync(file, rawText, 'utf8');
+  pruneBackups();
+  return file;
+}
+
+// Snapshot the current on-disk config (if any) before we overwrite it.
+function snapshotCurrent(configPath) {
+  if (!fs.existsSync(configPath)) return null;
+  return storeBackup(fs.readFileSync(configPath, 'utf8'));
+}
+
+function handleListBackups() {
+  const files = listBackupFiles().reverse(); // newest first
+  const items = files.map((f) => {
+    const full = path.join(backupsDir(), f);
+    let serverCount = null;
+    let serverNames = [];
+    try {
+      const root = JSON.parse(fs.readFileSync(full, 'utf8'));
+      if (root && root.mcpServers && typeof root.mcpServers === 'object') {
+        serverNames = Object.keys(root.mcpServers);
+        serverCount = serverNames.length;
+      } else {
+        serverCount = 0;
+      }
+    } catch (_) {
+      /* unreadable/corrupt backup — still listable */
+    }
+    let mtimeMs = 0;
+    try {
+      mtimeMs = fs.statSync(full).mtimeMs;
+    } catch (_) {
+      /* ignore */
+    }
+    return { id: f, mtimeMs, serverCount, serverNames };
+  });
+  return { ok: true, max: MAX_BACKUPS, items };
+}
+
+function handleRestoreBackup(_event, id) {
+  // Validate the id is a plain backup filename (no path traversal).
+  if (typeof id !== 'string' || !/^backup-[A-Za-z0-9._-]+\.json$/.test(id) || id.includes('..')) {
+    return { ok: false, error: 'Invalid backup id.' };
+  }
+  const full = path.join(backupsDir(), id);
+  if (!fs.existsSync(full)) {
+    return { ok: false, error: 'That backup no longer exists.' };
+  }
+
+  // Parse the backup and the CURRENT file.
+  const { root: backupRoot, parseError: backupErr } = core.parseRoot(fs.readFileSync(full, 'utf8'));
+  if (backupErr || !backupRoot) {
+    return { ok: false, error: `Backup is not valid JSON (${backupErr}).` };
+  }
+
+  const configPath = activeConfigPath();
+  const { root: curRoot, parseError: curErr } = readRoot(configPath);
+  if (curErr) {
+    return {
+      ok: false,
+      error: `Refusing to restore: current config is not valid JSON (${curErr}).`,
+    };
+  }
+
+  // Snapshot the current state first, so a restore is itself undoable.
+  snapshotCurrent(configPath);
+  if (!fs.existsSync(configPath)) {
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  }
+
+  // Consistent with the rest of the app: replace ONLY mcpServers, keeping every
+  // other current top-level key untouched.
+  const finalRoot = curRoot || {};
+  finalRoot.mcpServers = backupRoot.mcpServers && typeof backupRoot.mcpServers === 'object'
+    ? backupRoot.mcpServers
+    : {};
+
+  const tmpPath = `${configPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmpPath, core.serialize(finalRoot), 'utf8');
+  fs.renameSync(tmpPath, configPath);
+
+  return {
+    ok: true,
+    count: Object.keys(finalRoot.mcpServers).length,
+  };
+}
+
 function handleSave(_event, serverArray) {
   const configPath = activeConfigPath();
 
@@ -192,12 +329,11 @@ function handleSave(_event, serverArray) {
 
   const finalRoot = root || {};
 
-  // Backup the existing file (if any) before touching it.
+  // Snapshot the existing file (if any) into the in-app backup store before we
+  // overwrite it. This is the rollback history surfaced in the Backups tab.
   let backupPath = null;
   if (fs.existsSync(configPath)) {
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    backupPath = `${configPath}.backup-${stamp}`;
-    fs.copyFileSync(configPath, backupPath);
+    backupPath = snapshotCurrent(configPath);
   } else {
     // Ensure the Claude folder exists if we're creating the file for the first time.
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
@@ -294,6 +430,8 @@ app.whenReady().then(() => {
   ipcMain.handle('config:choose', handleChoose);
   ipcMain.handle('config:resetPath', handleResetPath);
   ipcMain.handle('config:openFolder', handleOpenFolder);
+  ipcMain.handle('backups:list', handleListBackups);
+  ipcMain.handle('backups:restore', handleRestoreBackup);
   ipcMain.handle('shell:openExternal', handleOpenExternal);
 
   createWindow();
