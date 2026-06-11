@@ -573,10 +573,14 @@ function fetchLatestRelease() {
 async function handleCheckUpdate() {
   const current = app.getVersion();
   const rel = await fetchLatestRelease();
-  if (!rel || !rel.tag_name) return { ok: true, updateAvailable: false, current };
+  if (!rel || !rel.tag_name) {
+    // Couldn't reach GitHub (offline / rate-limited) — distinct from "up to date".
+    return { ok: true, reachable: false, updateAvailable: false, current };
+  }
   const latest = String(rel.tag_name).replace(/^v/i, '');
   return {
     ok: true,
+    reachable: true,
     updateAvailable: compareVersions(latest, current) > 0,
     current,
     latest,
@@ -755,6 +759,7 @@ app.whenReady().then(() => {
   ipcMain.handle('pet:load', handlePetLoad);
   ipcMain.handle('pet:save', handlePetSave);
   ipcMain.handle('update:check', handleCheckUpdate);
+  ipcMain.handle('app:version', () => ({ ok: true, version: app.getVersion() }));
   ipcMain.handle('shell:openExternal', handleOpenExternal);
   ipcMain.handle('manage:requestOtp', handleManageRequestOtp);
   ipcMain.handle('manage:verifyOtp', handleManageVerifyOtp);

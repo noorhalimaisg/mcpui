@@ -964,6 +964,12 @@ $('pet-rename').addEventListener('click', petRename);
 $('pet-adopt').addEventListener('click', petAdopt);
 $('pet-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') petRename(); });
 
+// Check-for-updates button + version label
+$('btn-check-update').addEventListener('click', () => checkForUpdate(true));
+window.api.appVersion().then((r) => {
+  if (r && r.version) $('version-label').textContent = `Current version: v${r.version}`;
+});
+
 // Support external links
 document.querySelectorAll('.support-link').forEach((a) =>
   a.addEventListener('click', () => window.api.openExternal(a.dataset.href))
@@ -976,21 +982,38 @@ window.addEventListener('beforeunload', (e) => {
 // ---------------------------------------------------------------------------
 // Update check (non-blocking, silent on failure)
 // ---------------------------------------------------------------------------
-async function checkForUpdate() {
-  let res;
-  try { res = await window.api.checkUpdate(); } catch (_) { return; }
-  if (!res || !res.updateAvailable) return;
+let dismissedUpdateVersion = null;
 
+function showUpdateBanner(res) {
   $('update-text').innerHTML =
     `A new version <strong>v${escapeHtml(res.latest)}</strong> is available ` +
     `(you have v${escapeHtml(res.current)}).`;
-  const dl = $('update-download');
-  dl.onclick = () => window.api.openExternal(res.url);
-  $('update-dismiss').onclick = () => $('update-banner').classList.add('hidden');
+  $('update-download').onclick = () => window.api.openExternal(res.url);
+  $('update-dismiss').onclick = () => {
+    dismissedUpdateVersion = res.latest; // don't nag again for this version
+    $('update-banner').classList.add('hidden');
+  };
   $('update-banner').classList.remove('hidden');
+}
+
+// manual=true gives explicit feedback (toast) even when already up to date.
+async function checkForUpdate(manual) {
+  let res;
+  try { res = await window.api.checkUpdate(); } catch (_) { res = null; }
+  if (!res || !res.ok || res.reachable === false) {
+    if (manual) showToast('Could not reach the update server. Try again later.', 'err');
+    return;
+  }
+  if (res.updateAvailable) {
+    if (manual || res.latest !== dismissedUpdateVersion) showUpdateBanner(res);
+    if (manual) showToast(`Update available: v${res.latest}`, 'ok');
+  } else if (manual) {
+    showToast(`You're on the latest version (v${res.current}).`, 'ok');
+  }
 }
 
 loadFromDisk();
 checkForUpdate();
+setInterval(() => checkForUpdate(false), 6 * 60 * 60 * 1000); // re-check every 6h while open
 petInit();
 window.addEventListener('beforeunload', () => { if (pet) petSave(); });

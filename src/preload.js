@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('api', {
   getCatalogConfig: () => ipcRenderer.invoke('catalog:getConfig'),
   setCatalogUrl: (url) => ipcRenderer.invoke('catalog:setUrl', url),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
+  appVersion: () => ipcRenderer.invoke('app:version'),
   pet: {
     load: () => ipcRenderer.invoke('pet:load'),
     save: (pet) => ipcRenderer.invoke('pet:save', pet),

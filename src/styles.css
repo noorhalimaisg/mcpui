@@ -414,6 +414,8 @@ body {
 }
 .support-tip .ic { color: var(--accent); }
 .support-tip strong { color: var(--text); }
+.support-update { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+.version-label { color: var(--text-faint); font-size: 12.5px; }
 
 /* ---------- Footer ---------- */
 .app-footer {
