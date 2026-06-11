@@ -108,6 +108,24 @@ test('invalid JSON is reported, not swallowed', () => {
   assert.ok(parseError);
 });
 
+test('loaded servers default to enabled:true', () => {
+  const servers = core.serverObjectToArray(sample.mcpServers);
+  assert.ok(servers.every((s) => s.enabled === true));
+});
+
+test('disabled servers are excluded from the written object', () => {
+  const servers = core.serverObjectToArray(sample.mcpServers);
+  servers[0].enabled = false; // turn the first one OFF
+  const out = core.arrayToServerObject(servers);
+  assert.ok(!(servers[0].name in out), 'OFF server is not written');
+  assert.strictEqual(Object.keys(out).length, servers.length - 1);
+});
+
+test('models without an enabled field are treated as enabled', () => {
+  const out = core.arrayToServerObject([{ name: 'x', command: 'npx', args: [], env: {}, extra: {} }]);
+  assert.ok(out.x);
+});
+
 test('a brand-new config (no other keys) still works', () => {
   const root = {};
   core.mergeServers(root, [{ name: 'solo', command: 'npx', args: [], env: {}, extra: {} }]);

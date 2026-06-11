@@ -3,7 +3,14 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const core = require('./config-core');
+
+// Where the "Browse MCP" catalog is fetched from when online. The bundled
+// src/mcp-catalog.json is always available as a fallback. Override per-machine
+// by setting "catalogUrl" in the app's mcpui-settings.json.
+const DEFAULT_CATALOG_URL =
+  'https://raw.githubusercontent.com/noorhalimaisg/mcpui/main/src/mcp-catalog.json';
 
 // ---------------------------------------------------------------------------
 // Config location
@@ -86,6 +93,19 @@ function readOverridePath() {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed.configPathOverride === 'string' && parsed.configPathOverride.trim()) {
       return parsed.configPathOverride;
+    }
+  } catch (_) {
+    /* no settings yet */
+  }
+  return null;
+}
+
+// Read an arbitrary string setting from our settings file (returns null if unset).
+function readOverrideSetting(key) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+    if (parsed && typeof parsed[key] === 'string' && parsed[key].trim()) {
+      return parsed[key];
     }
   } catch (_) {
     /* no settings yet */
@@ -389,6 +409,56 @@ function handleOpenFolder() {
   return { ok: true };
 }
 
+// ---------------------------------------------------------------------------
+// Browse MCP catalog
+//
+// Returns a list of ready-to-add MCP templates. Each entry has command/args
+// where {token} is substituted with the user's token in the renderer. We ship
+// a bundled catalog and, if reachable, prefer a remote one so the list can be
+// updated without a new app release.
+// ---------------------------------------------------------------------------
+
+function readBundledCatalog() {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, 'mcp-catalog.json'), 'utf8');
+    const items = JSON.parse(raw);
+    return Array.isArray(items) ? items : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function fetchRemoteCatalog(url) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val) => { if (!settled) { settled = true; resolve(val); } };
+
+    const req = https.get(url, { timeout: 4000 }, (res) => {
+      if (res.statusCode !== 200) { res.resume(); return done(null); }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; if (data.length > 1_000_000) req.destroy(); });
+      res.on('end', () => {
+        try {
+          const items = JSON.parse(data);
+          done(Array.isArray(items) ? items : null);
+        } catch (_) { done(null); }
+      });
+    });
+    req.on('error', () => done(null));
+    req.on('timeout', () => { req.destroy(); done(null); });
+  });
+}
+
+async function handleBrowseCatalog() {
+  const url = readOverrideSetting('catalogUrl') || DEFAULT_CATALOG_URL;
+  const remote = await fetchRemoteCatalog(url);
+  if (remote && remote.length) {
+    return { ok: true, source: 'remote', url, items: remote };
+  }
+  return { ok: true, source: 'bundled', items: readBundledCatalog() };
+}
+
 // Open an external link in the user's default browser. Only http/https is
 // allowed, so the renderer can never use this to launch arbitrary protocols.
 function handleOpenExternal(_event, url) {
@@ -432,6 +502,7 @@ app.whenReady().then(() => {
   ipcMain.handle('config:openFolder', handleOpenFolder);
   ipcMain.handle('backups:list', handleListBackups);
   ipcMain.handle('backups:restore', handleRestoreBackup);
+  ipcMain.handle('catalog:browse', handleBrowseCatalog);
   ipcMain.handle('shell:openExternal', handleOpenExternal);
 
   createWindow();

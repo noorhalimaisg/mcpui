@@ -15,6 +15,7 @@ function serverObjectToArray(mcpServers) {
       args: Array.isArray(args) ? args.slice() : [],
       env: env && typeof env === 'object' && !Array.isArray(env) ? { ...env } : {},
       extra,
+      enabled: true, // everything already in mcpServers is active
     };
   });
 }
@@ -24,6 +25,10 @@ function arrayToServerObject(serverArray) {
   for (const m of serverArray) {
     const name = (m.name || '').trim();
     if (!name) continue;
+    // A server toggled OFF is excluded from what we write — Claude Desktop has
+    // no native "disabled" flag, so the only way to stop it loading is to leave
+    // it out of mcpServers.
+    if (m.enabled === false) continue;
     const entry = {};
     if (typeof m.command === 'string' && m.command.trim() !== '') {
       entry.command = m.command;

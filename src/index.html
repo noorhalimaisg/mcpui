@@ -22,6 +22,10 @@
         <svg viewBox="0 0 24 24" class="ic"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
         Reload
       </button>
+      <button id="btn-browse" class="btn ghost icon-btn">
+        <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        Browse MCP
+      </button>
       <button id="btn-add" class="btn primary icon-btn">
         <svg viewBox="0 0 24 24" class="ic"><path d="M12 5v14M5 12h14"/></svg>
         Add server
@@ -229,6 +233,50 @@
         <span class="spacer"></span>
         <button id="modal-cancel" class="btn ghost">Cancel</button>
         <button id="modal-ok" class="btn primary">Save server</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browse MCP modal -->
+  <div id="browse-modal" class="modal-overlay hidden">
+    <div class="modal browse" role="dialog" aria-modal="true">
+      <div class="browse-head">
+        <h2>Browse MCP servers</h2>
+        <span id="browse-source" class="browse-source"></span>
+      </div>
+      <p class="panel-sub" style="margin:0 0 16px;">Pick a server to add, then enter your token.</p>
+
+      <div id="browse-list" class="browse-list">
+        <div class="browse-loading">Loading catalog…</div>
+      </div>
+
+      <!-- token sub-form, shown after picking an entry -->
+      <div id="browse-form" class="browse-form hidden">
+        <button id="browse-back" class="btn tiny ghost">← Back to list</button>
+        <h3 id="browse-pick-name"></h3>
+        <p id="browse-pick-desc" class="panel-sub" style="margin:2px 0 14px;"></p>
+
+        <label class="field">
+          <span class="field-label">Name <em>(must be unique)</em></span>
+          <input id="browse-name" type="text" autocomplete="off" />
+        </label>
+        <label class="field" id="browse-token-field">
+          <span class="field-label">MCP token <em id="browse-token-hint"></em></span>
+          <input id="browse-token" type="text" placeholder="Paste your token" autocomplete="off" />
+        </label>
+        <code id="browse-endpoint" class="browse-endpoint"></code>
+
+        <div id="browse-error" class="modal-error hidden"></div>
+        <div class="modal-actions">
+          <span class="spacer"></span>
+          <button id="browse-cancel" class="btn ghost">Cancel</button>
+          <button id="browse-confirm" class="btn primary">Add server</button>
+        </div>
+      </div>
+
+      <div class="modal-actions" id="browse-foot">
+        <span class="spacer"></span>
+        <button id="browse-close" class="btn ghost">Close</button>
       </div>
     </div>
   </div>
