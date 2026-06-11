@@ -572,4 +572,22 @@ window.addEventListener('beforeunload', (e) => {
   if (isDirty()) { e.preventDefault(); e.returnValue = ''; }
 });
 
+// ---------------------------------------------------------------------------
+// Update check (non-blocking, silent on failure)
+// ---------------------------------------------------------------------------
+async function checkForUpdate() {
+  let res;
+  try { res = await window.api.checkUpdate(); } catch (_) { return; }
+  if (!res || !res.updateAvailable) return;
+
+  $('update-text').innerHTML =
+    `A new version <strong>v${escapeHtml(res.latest)}</strong> is available ` +
+    `(you have v${escapeHtml(res.current)}).`;
+  const dl = $('update-download');
+  dl.onclick = () => window.api.openExternal(res.url);
+  $('update-dismiss').onclick = () => $('update-banner').classList.add('hidden');
+  $('update-banner').classList.remove('hidden');
+}
+
 loadFromDisk();
+checkForUpdate();

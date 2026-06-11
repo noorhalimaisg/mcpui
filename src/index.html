@@ -8,6 +8,14 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body data-tab="servers">
+  <!-- Update banner -->
+  <div id="update-banner" class="update-banner hidden">
+    <svg viewBox="0 0 24 24" class="ic"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>
+    <span id="update-text"></span>
+    <button id="update-download" class="btn tiny primary">Download</button>
+    <button id="update-dismiss" class="update-x" title="Dismiss">&times;</button>
+  </div>
+
   <!-- Header -->
   <header class="app-header">
     <div class="brand">

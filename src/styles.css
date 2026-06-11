@@ -48,6 +48,24 @@ body {
   flex-shrink: 0;
 }
 
+/* ---------- Update banner ---------- */
+.update-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 24px;
+  background: rgba(240,80,46,0.12);
+  border-bottom: 1px solid rgba(240,80,46,0.3);
+  font-size: 13.5px; color: var(--text);
+  flex-shrink: 0;
+}
+.update-banner .ic { color: var(--accent); width: 18px; height: 18px; }
+.update-banner #update-text { flex: 1; }
+.update-banner #update-text strong { color: var(--accent); }
+.update-x {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px;
+}
+.update-x:hover { color: var(--text); }
+
 /* ---------- Header ---------- */
 .app-header {
   display: flex;

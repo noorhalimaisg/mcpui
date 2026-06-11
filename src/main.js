@@ -459,6 +459,62 @@ async function handleBrowseCatalog() {
   return { ok: true, source: 'bundled', items: readBundledCatalog() };
 }
 
+// ---------------------------------------------------------------------------
+// Update check
+//
+// No server needed: we ask GitHub's public Releases API for the latest release
+// and compare its tag to our own version. Any failure (offline, rate-limited)
+// is swallowed so it never nags the user.
+// ---------------------------------------------------------------------------
+
+const RELEASES_API = 'https://api.github.com/repos/noorhalimaisg/mcpui/releases/latest';
+
+function compareVersions(a, b) {
+  const pa = String(a).split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x > y) return 1;
+    if (x < y) return -1;
+  }
+  return 0;
+}
+
+function fetchLatestRelease() {
+  return new Promise((resolve) => {
+    // GitHub requires a User-Agent header or it rejects the request.
+    const opts = {
+      headers: { 'User-Agent': 'mcpui', Accept: 'application/vnd.github+json' },
+      timeout: 4000,
+    };
+    const req = https.get(RELEASES_API, opts, (res) => {
+      if (res.statusCode !== 200) { res.resume(); return resolve(null); }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; if (data.length > 2_000_000) req.destroy(); });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch (_) { resolve(null); } });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+async function handleCheckUpdate() {
+  const current = app.getVersion();
+  const rel = await fetchLatestRelease();
+  if (!rel || !rel.tag_name) return { ok: true, updateAvailable: false, current };
+  const latest = String(rel.tag_name).replace(/^v/i, '');
+  return {
+    ok: true,
+    updateAvailable: compareVersions(latest, current) > 0,
+    current,
+    latest,
+    url: rel.html_url,
+    name: rel.name || rel.tag_name,
+  };
+}
+
 // Open an external link in the user's default browser. Only http/https is
 // allowed, so the renderer can never use this to launch arbitrary protocols.
 function handleOpenExternal(_event, url) {
@@ -503,6 +559,7 @@ app.whenReady().then(() => {
   ipcMain.handle('backups:list', handleListBackups);
   ipcMain.handle('backups:restore', handleRestoreBackup);
   ipcMain.handle('catalog:browse', handleBrowseCatalog);
+  ipcMain.handle('update:check', handleCheckUpdate);
   ipcMain.handle('shell:openExternal', handleOpenExternal);
 
   createWindow();
