@@ -488,6 +488,21 @@ function handleCatalogSetUrl(_e, url) {
   return { ok: true };
 }
 
+// --- Virtual pet persistence (stored in our settings file) -----------------
+function handlePetLoad() {
+  try {
+    const s = JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+    return { ok: true, pet: s && s.pet ? s.pet : null };
+  } catch (_) {
+    return { ok: true, pet: null };
+  }
+}
+
+function handlePetSave(_e, pet) {
+  writeSetting('pet', pet && typeof pet === 'object' ? pet : null);
+  return { ok: true };
+}
+
 async function handleBrowseCatalog() {
   const bundled = readBundledCatalog();
   const url = readOverrideSetting('catalogUrl') || DEFAULT_CATALOG_URL;
@@ -737,6 +752,8 @@ app.whenReady().then(() => {
   ipcMain.handle('catalog:browse', handleBrowseCatalog);
   ipcMain.handle('catalog:getConfig', handleCatalogGetConfig);
   ipcMain.handle('catalog:setUrl', handleCatalogSetUrl);
+  ipcMain.handle('pet:load', handlePetLoad);
+  ipcMain.handle('pet:save', handlePetSave);
   ipcMain.handle('update:check', handleCheckUpdate);
   ipcMain.handle('shell:openExternal', handleOpenExternal);
   ipcMain.handle('manage:requestOtp', handleManageRequestOtp);

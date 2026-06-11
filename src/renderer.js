@@ -128,6 +128,7 @@ function switchTab(name) {
   );
   if (name === 'backups') loadBackups();
   if (name === 'manage') refreshManage();
+  if (name === 'pet') { petSyncDecay(); petCheckDeath(); renderPet(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -725,6 +726,174 @@ async function deleteManageEntry(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Virtual pet (Tamagotchi-style)
+// ---------------------------------------------------------------------------
+let pet = null;
+let petTimer = null;
+
+// Decay per real minute. Stats are 0–100. Energy slowly recovers while idle.
+const PET_RATE = { fullness: 1.2, hydration: 1.4, energyRecover: 4 };
+const PET_WMAX = 100;
+
+function petClamp(v) { return Math.max(0, Math.min(100, v)); }
+function petDefaults() {
+  const now = Date.now();
+  return { name: 'Pixel', fullness: 80, hydration: 80, energy: 80, weight: 50,
+    bornAt: now, lastTick: now, alive: true, cause: '' };
+}
+
+function petSyncDecay() {
+  const now = Date.now();
+  const mins = Math.max(0, (now - (pet.lastTick || now)) / 60000);
+  pet.lastTick = now;
+  if (!pet.alive) return;
+  pet.fullness = petClamp(pet.fullness - PET_RATE.fullness * mins);
+  pet.hydration = petClamp(pet.hydration - PET_RATE.hydration * mins);
+  pet.energy = petClamp(pet.energy + PET_RATE.energyRecover * mins);
+}
+
+function petCheckDeath() {
+  if (!pet.alive) return;
+  let cause = '';
+  if (pet.fullness <= 0) cause = 'starved to death — feed it more often.';
+  else if (pet.hydration <= 0) cause = 'died of dehydration — keep it watered.';
+  else if (pet.energy <= 0) cause = 'collapsed from exhaustion — don’t over-exercise.';
+  else if (pet.weight >= PET_WMAX) cause = 'got too fat and died — easy on the snacks.';
+  if (cause) { pet.alive = false; pet.cause = cause; }
+}
+
+function petSave() { window.api.pet.save(pet); }
+
+function petFace() {
+  if (!pet.alive) return '💀';
+  if (pet.weight >= 85) return '🐷';
+  if (pet.fullness <= 20) return '😖';
+  if (pet.hydration <= 20) return '🥵';
+  if (pet.energy <= 20) return '😴';
+  if (pet.fullness >= 60 && pet.hydration >= 60 && pet.energy >= 60) return '😸';
+  return '👾';
+}
+
+function petStatusText() {
+  if (!pet.alive) return `${pet.name} is no more. RIP.`;
+  if (pet.weight >= 85) return `${pet.name} is dangerously overweight!`;
+  if (pet.fullness <= 20) return `${pet.name} is starving!`;
+  if (pet.hydration <= 20) return `${pet.name} is parched!`;
+  if (pet.energy <= 20) return `${pet.name} is exhausted!`;
+  return `${pet.name} is doing great!`;
+}
+
+function petAgeText() {
+  const ms = Date.now() - (pet.bornAt || Date.now());
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `Age: ${mins} min`;
+  const h = Math.floor(mins / 60);
+  const d = Math.floor(h / 24);
+  if (h < 24) return `Age: ${h}h ${mins % 60}m`;
+  return `Age: ${d}d ${h % 24}h`;
+}
+
+function setBar(id, value, dangerLow) {
+  const elB = $(id);
+  elB.style.width = `${petClamp(value)}%`;
+  elB.classList.remove('warn', 'danger');
+  if (dangerLow) {
+    if (value <= 20) elB.classList.add('danger');
+    else if (value <= 40) elB.classList.add('warn');
+  } else { // weight: high is bad
+    if (value >= 85) elB.classList.add('danger');
+    else if (value >= 70) elB.classList.add('warn');
+  }
+}
+
+function renderPet() {
+  if (!pet) return;
+  const face = $('pet-face');
+  face.textContent = petFace();
+  face.classList.toggle('dead', !pet.alive);
+  const st = $('pet-status');
+  st.textContent = petStatusText();
+  st.classList.toggle('alert', pet.alive && (pet.fullness <= 20 || pet.hydration <= 20 || pet.energy <= 20 || pet.weight >= 85));
+  $('pet-age').textContent = petAgeText();
+  setBar('bar-fullness', pet.fullness, true);
+  setBar('bar-hydration', pet.hydration, true);
+  setBar('bar-energy', pet.energy, true);
+  setBar('bar-weight', pet.weight, false);
+
+  const dead = !pet.alive;
+  $('pet-actions').style.opacity = dead ? '0.4' : '1';
+  ['pet-feed', 'pet-exercise', 'pet-drink'].forEach((id) => { $(id).disabled = dead; });
+  $('pet-dead').classList.toggle('hidden', !dead);
+  if (dead) $('pet-dead-msg').textContent = `${pet.name} ${pet.cause}`;
+}
+
+function petAct(fn, toast) {
+  if (!pet || !pet.alive) return;
+  petSyncDecay();
+  fn();
+  pet.fullness = petClamp(pet.fullness);
+  pet.hydration = petClamp(pet.hydration);
+  pet.energy = petClamp(pet.energy);
+  pet.weight = Math.max(0, pet.weight);
+  petCheckDeath();
+  renderPet();
+  petSave();
+  if (toast) showToast(toast, pet.alive ? 'ok' : 'err');
+}
+
+function petFeed() {
+  if (!pet || !pet.alive) return;
+  petAct(() => { pet.fullness += 25; pet.weight += 7; pet.energy += 5; }, `Fed ${pet.name}. 🍔`);
+}
+function petExercise() {
+  if (!pet || !pet.alive) return;
+  petAct(() => { pet.weight -= 6; pet.energy -= 22; pet.fullness -= 8; pet.hydration -= 8; }, `${pet.name} worked out. 🏃`);
+}
+function petDrink() {
+  if (!pet || !pet.alive) return;
+  petAct(() => { pet.hydration += 30; pet.fullness += 2; }, `${pet.name} had a drink. 💧`);
+}
+
+function petTick() {
+  if (!pet) return;
+  petSyncDecay();
+  petCheckDeath();
+  renderPet();
+  petSave();
+}
+
+async function petInit() {
+  const res = await window.api.pet.load();
+  pet = (res && res.pet) ? res.pet : petDefaults();
+  // normalise any missing fields
+  pet = Object.assign(petDefaults(), pet);
+  $('pet-name').value = pet.name || 'Pixel';
+  petSyncDecay();
+  petCheckDeath();
+  renderPet();
+  petSave();
+  if (petTimer) clearInterval(petTimer);
+  petTimer = setInterval(petTick, 8000); // tick while the app is open
+}
+
+function petRename() {
+  if (!pet) return;
+  const name = ($('pet-name').value || '').trim() || 'Pixel';
+  pet.name = name;
+  renderPet();
+  petSave();
+  showToast(`Pet renamed to "${name}".`, 'ok');
+}
+
+function petAdopt() {
+  pet = petDefaults();
+  $('pet-name').value = pet.name;
+  renderPet();
+  petSave();
+  showToast('A new egg hatched! 🥚', 'ok');
+}
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 document.querySelectorAll('.tab').forEach((t) =>
@@ -787,6 +956,14 @@ document.querySelectorAll('.acc-head').forEach((h) =>
   h.addEventListener('click', () => h.parentElement.classList.toggle('open'))
 );
 
+// Pet
+$('pet-feed').addEventListener('click', petFeed);
+$('pet-exercise').addEventListener('click', petExercise);
+$('pet-drink').addEventListener('click', petDrink);
+$('pet-rename').addEventListener('click', petRename);
+$('pet-adopt').addEventListener('click', petAdopt);
+$('pet-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') petRename(); });
+
 // Support external links
 document.querySelectorAll('.support-link').forEach((a) =>
   a.addEventListener('click', () => window.api.openExternal(a.dataset.href))
@@ -815,3 +992,5 @@ async function checkForUpdate() {
 
 loadFromDisk();
 checkForUpdate();
+petInit();
+window.addEventListener('beforeunload', () => { if (pet) petSave(); });

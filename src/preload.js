@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('api', {
   getCatalogConfig: () => ipcRenderer.invoke('catalog:getConfig'),
   setCatalogUrl: (url) => ipcRenderer.invoke('catalog:setUrl', url),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
+  pet: {
+    load: () => ipcRenderer.invoke('pet:load'),
+    save: (pet) => ipcRenderer.invoke('pet:save', pet),
+  },
   manage: {
     requestOtp: (email) => ipcRenderer.invoke('manage:requestOtp', email),
     verifyOtp: (email, otp) => ipcRenderer.invoke('manage:verifyOtp', email, otp),

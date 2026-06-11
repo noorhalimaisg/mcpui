@@ -63,6 +63,10 @@
       <svg viewBox="0 0 24 24" class="ic"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 21l1.9-4.1A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z"/></svg>
       Support
     </button>
+    <button class="tab" data-tab="pet" role="tab">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="6" cy="11" r="1.7"/><circle cx="10" cy="6.5" r="1.7"/><circle cx="14" cy="6.5" r="1.7"/><circle cx="18" cy="11" r="1.7"/><path d="M8.5 15.5c1-1.6 2-2.3 3.5-2.3s2.5.7 3.5 2.3c1 1.6.3 3.7-1.6 3.7-.8 0-1.2-.4-1.9-.4s-1.1.4-1.9.4c-1.9 0-2.6-2.1-1.6-3.7z"/></svg>
+      Pet
+    </button>
   </nav>
 
   <!-- Content -->
@@ -192,6 +196,55 @@
             </ul>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- PET PANEL -->
+    <section id="panel-pet" class="panel hidden">
+      <div class="pet-wrap">
+        <div class="pet-stage">
+          <div id="pet-face" class="pet-face">🥚</div>
+          <div id="pet-status" class="pet-status"></div>
+        </div>
+
+        <div class="pet-name-row">
+          <input id="pet-name" class="pet-name-input" maxlength="24" placeholder="Name your pet" autocomplete="off" />
+          <button id="pet-rename" class="btn tiny ghost">Rename</button>
+        </div>
+        <div class="pet-age" id="pet-age"></div>
+
+        <div class="pet-stats">
+          <div class="pet-stat">
+            <span class="pet-stat-label">🍖 Fullness</span>
+            <div class="bar"><div id="bar-fullness" class="bar-fill"></div></div>
+          </div>
+          <div class="pet-stat">
+            <span class="pet-stat-label">💧 Hydration</span>
+            <div class="bar"><div id="bar-hydration" class="bar-fill"></div></div>
+          </div>
+          <div class="pet-stat">
+            <span class="pet-stat-label">⚡ Energy</span>
+            <div class="bar"><div id="bar-energy" class="bar-fill"></div></div>
+          </div>
+          <div class="pet-stat">
+            <span class="pet-stat-label">⚖️ Weight</span>
+            <div class="bar"><div id="bar-weight" class="bar-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="pet-actions" id="pet-actions">
+          <button id="pet-feed" class="btn primary">🍔 Feed</button>
+          <button id="pet-exercise" class="btn primary">🏃 Exercise</button>
+          <button id="pet-drink" class="btn primary">💧 Water</button>
+          <button id="pet-battle" class="btn ghost" disabled title="Coming soon">⚔️ Battle (soon)</button>
+        </div>
+
+        <div id="pet-dead" class="pet-dead hidden">
+          <p id="pet-dead-msg"></p>
+          <button id="pet-adopt" class="btn primary">Adopt a new pet</button>
+        </div>
+
+        <p class="pet-hint">Keep it fed, watered and rested — but don't overdo any of it. Neglect it and it won't make it. 🌱</p>
       </div>
     </section>
 
