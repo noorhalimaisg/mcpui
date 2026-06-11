@@ -427,16 +427,9 @@ async function openBrowse() {
   el.browseForm.classList.add('hidden');
   el.browseList.classList.remove('hidden');
   el.browseFoot.classList.remove('hidden');
-  $('browse-source-config').classList.remove('hidden');
   el.browseList.innerHTML = '<div class="browse-loading">Loading catalog…</div>';
   el.browseSource.textContent = '';
   el.browseModal.classList.remove('hidden');
-
-  // Load the configured catalog source into the editor.
-  const cfg = await window.api.getCatalogConfig();
-  $('browse-source-url').value = cfg.override || '';
-  $('browse-source-url').placeholder = cfg.default || 'https://…/wp-json/mcp-catalog/v1/catalog';
-  $('browse-source-note').textContent = cfg.override ? 'Using your saved source' : 'Using the default source';
 
   const res = await window.api.browseCatalog();
   const items = (res && res.items) || [];
@@ -493,7 +486,6 @@ function pickEntry(entry) {
 
   el.browseList.classList.add('hidden');
   el.browseFoot.classList.add('hidden');
-  $('browse-source-config').classList.add('hidden');
   el.browseForm.classList.remove('hidden');
   el.browseName.focus();
 }
@@ -502,7 +494,6 @@ function backToBrowseList() {
   el.browseForm.classList.add('hidden');
   el.browseList.classList.remove('hidden');
   el.browseFoot.classList.remove('hidden');
-  $('browse-source-config').classList.remove('hidden');
 }
 
 function closeBrowse() { el.browseModal.classList.add('hidden'); pickedEntry = null; }
@@ -747,16 +738,6 @@ $('browse-close').addEventListener('click', closeBrowse);
 $('browse-cancel').addEventListener('click', closeBrowse);
 $('browse-back').addEventListener('click', backToBrowseList);
 $('browse-confirm').addEventListener('click', confirmBrowseAdd);
-$('browse-source-save').addEventListener('click', async () => {
-  await window.api.setCatalogUrl($('browse-source-url').value);
-  showToast('Catalog source saved.', 'ok');
-  openBrowse();
-});
-$('browse-source-reset').addEventListener('click', async () => {
-  await window.api.setCatalogUrl('');
-  showToast('Reset to default source.', 'ok');
-  openBrowse();
-});
 el.browseModal.addEventListener('click', (e) => { if (e.target === el.browseModal) closeBrowse(); });
 $('btn-reload').addEventListener('click', discardChanges);
 $('btn-save').addEventListener('click', saveToDisk);
