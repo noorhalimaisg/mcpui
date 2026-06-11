@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('api', {
   listBackups: () => ipcRenderer.invoke('backups:list'),
   restoreBackup: (id) => ipcRenderer.invoke('backups:restore', id),
   browseCatalog: () => ipcRenderer.invoke('catalog:browse'),
+  getCatalogConfig: () => ipcRenderer.invoke('catalog:getConfig'),
+  setCatalogUrl: (url) => ipcRenderer.invoke('catalog:setUrl', url),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   manage: {
     requestOtp: (email) => ipcRenderer.invoke('manage:requestOtp', email),

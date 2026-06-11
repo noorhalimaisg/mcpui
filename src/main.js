@@ -117,6 +117,22 @@ function readOverrideSetting(key) {
   return null;
 }
 
+// Write (or clear, when value is empty/null) an arbitrary string setting.
+function writeSetting(key, value) {
+  let current = {};
+  try {
+    current = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) || {};
+  } catch (_) {
+    current = {};
+  }
+  if (value === null || value === undefined || value === '') {
+    delete current[key];
+  } else {
+    current[key] = value;
+  }
+  fs.writeFileSync(settingsPath(), JSON.stringify(current, null, 2), 'utf8');
+}
+
 function writeOverridePath(p) {
   let current = {};
   try {
@@ -454,6 +470,21 @@ function fetchRemoteCatalog(url) {
   });
 }
 
+function handleCatalogGetConfig() {
+  const override = readOverrideSetting('catalogUrl');
+  return {
+    ok: true,
+    override: override || '',
+    default: DEFAULT_CATALOG_URL,
+    effective: override || DEFAULT_CATALOG_URL,
+  };
+}
+
+function handleCatalogSetUrl(_e, url) {
+  writeSetting('catalogUrl', typeof url === 'string' ? url.trim() : '');
+  return { ok: true };
+}
+
 async function handleBrowseCatalog() {
   const bundled = readBundledCatalog();
   const url = readOverrideSetting('catalogUrl') || DEFAULT_CATALOG_URL;
@@ -701,6 +732,8 @@ app.whenReady().then(() => {
   ipcMain.handle('backups:list', handleListBackups);
   ipcMain.handle('backups:restore', handleRestoreBackup);
   ipcMain.handle('catalog:browse', handleBrowseCatalog);
+  ipcMain.handle('catalog:getConfig', handleCatalogGetConfig);
+  ipcMain.handle('catalog:setUrl', handleCatalogSetUrl);
   ipcMain.handle('update:check', handleCheckUpdate);
   ipcMain.handle('shell:openExternal', handleOpenExternal);
   ipcMain.handle('manage:requestOtp', handleManageRequestOtp);
