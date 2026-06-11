@@ -16,4 +16,14 @@ contextBridge.exposeInMainWorld('api', {
   restoreBackup: (id) => ipcRenderer.invoke('backups:restore', id),
   browseCatalog: () => ipcRenderer.invoke('catalog:browse'),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
+  manage: {
+    requestOtp: (email) => ipcRenderer.invoke('manage:requestOtp', email),
+    verifyOtp: (email, otp) => ipcRenderer.invoke('manage:verifyOtp', email, otp),
+    status: () => ipcRenderer.invoke('manage:status'),
+    logout: () => ipcRenderer.invoke('manage:logout'),
+    list: () => ipcRenderer.invoke('manage:list'),
+    create: (entry) => ipcRenderer.invoke('manage:create', entry),
+    update: (id, entry) => ipcRenderer.invoke('manage:update', id, entry),
+    delete: (id) => ipcRenderer.invoke('manage:delete', id),
+  },
 });

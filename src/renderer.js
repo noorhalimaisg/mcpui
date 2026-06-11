@@ -127,6 +127,7 @@ function switchTab(name) {
     p.classList.toggle('hidden', p.id !== `panel-${name}`)
   );
   if (name === 'backups') loadBackups();
+  if (name === 'manage') refreshManage();
 }
 
 // ---------------------------------------------------------------------------
@@ -528,6 +529,202 @@ function browseError(msg) {
 }
 
 // ---------------------------------------------------------------------------
+// Manage catalog (OTP login + CRUD)
+// ---------------------------------------------------------------------------
+let manageItems = [];
+let manageEditId = null;
+let manageAuthEmail = '';
+
+async function refreshManage() {
+  const s = await window.api.manage.status();
+  if (s && s.loggedIn) { showManageApp(s.email); loadManageList(); }
+  else showManageLogin();
+}
+
+function showManageLogin() {
+  $('manage-login').classList.remove('hidden');
+  $('manage-app').classList.add('hidden');
+  $('manage-otp-field').classList.add('hidden');
+  $('manage-verify').classList.add('hidden');
+  $('manage-reset').classList.add('hidden');
+  $('manage-send').classList.remove('hidden');
+  $('manage-auth-error').classList.add('hidden');
+  $('manage-email').removeAttribute('readonly');
+  $('manage-otp').value = '';
+}
+
+function showManageApp(email) {
+  $('manage-login').classList.add('hidden');
+  $('manage-app').classList.remove('hidden');
+  $('manage-who').innerHTML = `Signed in as <strong>${escapeHtml(email || '')}</strong>`;
+}
+
+function manageAuthError(msg) {
+  const e = $('manage-auth-error');
+  e.textContent = msg;
+  e.classList.remove('hidden');
+}
+
+async function manageSendCode() {
+  const email = $('manage-email').value.trim();
+  if (!email) return manageAuthError('Enter your email.');
+  $('manage-auth-error').classList.add('hidden');
+  $('manage-send').disabled = true;
+  const r = await window.api.manage.requestOtp(email);
+  $('manage-send').disabled = false;
+  if (!r.ok) return manageAuthError(r.error || 'Could not send code.');
+  if (!r.allowed) return manageAuthError('This email is not authorised to manage the catalog.');
+  manageAuthEmail = email;
+  $('manage-email').setAttribute('readonly', 'readonly');
+  $('manage-otp-field').classList.remove('hidden');
+  $('manage-send').classList.add('hidden');
+  $('manage-verify').classList.remove('hidden');
+  $('manage-reset').classList.remove('hidden');
+  $('manage-otp').focus();
+  showToast(`Code sent to ${email}.`, 'ok');
+}
+
+function manageResetLogin() {
+  manageAuthEmail = '';
+  showManageLogin();
+  $('manage-email').value = '';
+  $('manage-email').focus();
+}
+
+async function manageVerify() {
+  const otp = $('manage-otp').value.trim();
+  if (!otp) return manageAuthError('Enter the verification code.');
+  $('manage-auth-error').classList.add('hidden');
+  $('manage-verify').disabled = true;
+  const r = await window.api.manage.verifyOtp(manageAuthEmail, otp);
+  $('manage-verify').disabled = false;
+  if (!r.ok) return manageAuthError(r.error || 'Invalid code.');
+  showManageApp(r.email);
+  showToast('Login successful.', 'ok');
+  loadManageList();
+}
+
+async function manageLogout() {
+  await window.api.manage.logout();
+  manageResetLogin();
+  showToast('Logged out.', 'ok');
+}
+
+async function loadManageList() {
+  const r = await window.api.manage.list();
+  if (!r.ok) {
+    if (r.expired) { showManageLogin(); }
+    showToast(r.error || 'Could not load catalog.', 'err');
+    return;
+  }
+  manageItems = r.items || [];
+  renderManageList();
+}
+
+function renderManageList() {
+  const list = $('manage-list');
+  list.innerHTML = '';
+  $('manage-empty').classList.toggle('hidden', manageItems.length > 0);
+
+  manageItems.forEach((it) => {
+    const row = document.createElement('div');
+    row.className = 'manage-row';
+    const title = it.title || it.name || 'mcp';
+    const initial = escapeHtml(title.trim().charAt(0).toUpperCase() || '?');
+    const iconHtml = it.icon
+      ? `<img class="browse-icon-img" src="${escapeHtml(it.icon)}" alt="" />`
+      : `<span class="browse-icon-fallback">${initial}</span>`;
+    row.innerHTML = `
+      <div class="browse-icon">${iconHtml}</div>
+      <div class="manage-row-main">
+        <div class="manage-row-title">${escapeHtml(title)}</div>
+        <div class="manage-row-sub"><code>${escapeHtml(it.name || '')}</code>${it.author ? ' · ' + escapeHtml(it.author) : ''}</div>
+      </div>
+      <div class="manage-row-actions">
+        <button class="btn tiny ghost" data-medit="${it.id}">Edit</button>
+        <button class="btn tiny danger" data-mdel="${it.id}">Delete</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('[data-medit]').forEach((b) =>
+    b.addEventListener('click', () => openManageModal(b.dataset.medit))
+  );
+  list.querySelectorAll('[data-mdel]').forEach((b) =>
+    b.addEventListener('click', () => deleteManageEntry(b.dataset.mdel))
+  );
+}
+
+function openManageModal(id) {
+  manageEditId = id || null;
+  $('manage-modal-error').classList.add('hidden');
+  const it = id ? manageItems.find((x) => String(x.id) === String(id)) : null;
+  $('manage-modal-title').textContent = it ? 'Edit MCP' : 'Add MCP';
+  $('m-title').value = it ? (it.title || '') : '';
+  $('m-name').value = it ? (it.name || '') : '';
+  $('m-desc').value = it ? (it.description || '') : '';
+  $('m-author').value = it ? (it.author || '') : '';
+  $('m-icon').value = it ? (it.icon || '') : '';
+  $('m-command').value = it ? (it.command || '') : 'npx';
+  $('m-args').value = it ? (it.args || []).join('\n') : '';
+  $('m-reqtoken').checked = it ? !!it.requiresToken : false;
+  $('m-tokenhint').value = it ? (it.tokenHint || '') : '';
+  $('manage-modal-delete').classList.toggle('hidden', !it);
+  $('manage-modal').classList.remove('hidden');
+  $('m-title').focus();
+}
+
+function closeManageModal() { $('manage-modal').classList.add('hidden'); manageEditId = null; }
+
+async function saveManageModal() {
+  const entry = {
+    name: $('m-name').value.trim(),
+    title: $('m-title').value.trim(),
+    description: $('m-desc').value.trim(),
+    author: $('m-author').value.trim(),
+    icon: $('m-icon').value.trim(),
+    command: $('m-command').value.trim() || 'npx',
+    args: textToArgs($('m-args').value),
+    requiresToken: $('m-reqtoken').checked,
+    tokenHint: $('m-tokenhint').value.trim(),
+  };
+  if (!entry.title) { return manageModalError('MCP name is required.'); }
+  if (!entry.name) { entry.name = entry.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+
+  const r = manageEditId
+    ? await window.api.manage.update(manageEditId, entry)
+    : await window.api.manage.create(entry);
+  if (!r.ok) {
+    if (r.expired) { closeManageModal(); showManageLogin(); }
+    return manageModalError(r.error || 'Save failed.');
+  }
+  closeManageModal();
+  await loadManageList();
+  showToast(manageEditId ? 'Saved.' : 'Added.', 'ok');
+}
+
+function manageModalError(msg) {
+  const e = $('manage-modal-error');
+  e.textContent = msg;
+  e.classList.remove('hidden');
+}
+
+async function deleteManageEntry(id) {
+  const it = manageItems.find((x) => String(x.id) === String(id));
+  if (!confirm(`Delete catalog entry "${it ? (it.title || it.name) : id}"? This affects everyone using the catalog.`)) return;
+  const r = await window.api.manage.delete(id);
+  if (!r.ok) {
+    if (r.expired) showManageLogin();
+    showToast(r.error || 'Delete failed.', 'err');
+    return;
+  }
+  closeManageModal();
+  await loadManageList();
+  showToast('Deleted.', 'ok');
+}
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 document.querySelectorAll('.tab').forEach((t) =>
@@ -554,6 +751,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!el.modal.classList.contains('hidden')) closeModal();
   else if (!el.browseModal.classList.contains('hidden')) closeBrowse();
+  else if (!$('manage-modal').classList.contains('hidden')) closeManageModal();
 });
 
 $('btn-open-folder').addEventListener('click', async () => {
@@ -569,6 +767,20 @@ $('btn-reset-path').addEventListener('click', async () => {
   showToast('Reverted to default config path.', 'ok');
   await loadFromDisk();
 });
+
+// Manage tab
+$('manage-send').addEventListener('click', manageSendCode);
+$('manage-verify').addEventListener('click', manageVerify);
+$('manage-reset').addEventListener('click', manageResetLogin);
+$('manage-logout').addEventListener('click', manageLogout);
+$('manage-refresh').addEventListener('click', loadManageList);
+$('manage-add').addEventListener('click', () => openManageModal(null));
+$('manage-modal-cancel').addEventListener('click', closeManageModal);
+$('manage-modal-save').addEventListener('click', saveManageModal);
+$('manage-modal-delete').addEventListener('click', () => deleteManageEntry(manageEditId));
+$('manage-modal').addEventListener('click', (e) => { if (e.target === $('manage-modal')) closeManageModal(); });
+$('manage-email').addEventListener('keydown', (e) => { if (e.key === 'Enter') manageSendCode(); });
+$('manage-otp').addEventListener('keydown', (e) => { if (e.key === 'Enter') manageVerify(); });
 
 // FAQ accordion
 document.querySelectorAll('.acc-head').forEach((h) =>

@@ -51,6 +51,10 @@
       <svg viewBox="0 0 24 24" class="ic"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/></svg>
       Backups
     </button>
+    <button class="tab" data-tab="manage" role="tab">
+      <svg viewBox="0 0 24 24" class="ic"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
+      Manage
+    </button>
     <button class="tab" data-tab="faq" role="tab">
       <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/></svg>
       FAQ
@@ -93,6 +97,45 @@
       <div id="backups-empty" class="empty hidden">
         <p>No backups yet.</p>
         <p class="panel-sub">A backup is created automatically every time you save.</p>
+      </div>
+    </section>
+
+    <!-- MANAGE PANEL -->
+    <section id="panel-manage" class="panel hidden">
+      <!-- Logged-out: OTP login -->
+      <div id="manage-login">
+        <h2 class="panel-title">Manage catalog</h2>
+        <p class="panel-sub">Sign in with an authorised email to add, edit, or remove catalog servers. We'll email you a one-time code.</p>
+        <div class="manage-auth-card">
+          <label class="field">
+            <span class="field-label">Email</span>
+            <input id="manage-email" type="email" placeholder="you@aisingapore.org" autocomplete="off" />
+          </label>
+          <label class="field hidden" id="manage-otp-field">
+            <span class="field-label">Verification code <em>(check your inbox)</em></span>
+            <input id="manage-otp" type="text" inputmode="numeric" placeholder="6-digit code" autocomplete="off" />
+          </label>
+          <div id="manage-auth-error" class="modal-error hidden"></div>
+          <div class="manage-auth-actions">
+            <button id="manage-send" class="btn primary">Send code</button>
+            <button id="manage-verify" class="btn primary hidden">Verify &amp; sign in</button>
+            <button id="manage-reset" class="btn ghost hidden">Use a different email</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logged-in: CRUD -->
+      <div id="manage-app" class="hidden">
+        <div class="manage-bar">
+          <span class="manage-who" id="manage-who"></span>
+          <div class="manage-bar-actions">
+            <button id="manage-refresh" class="btn ghost tiny">Refresh</button>
+            <button id="manage-add" class="btn primary tiny">+ Add MCP</button>
+            <button id="manage-logout" class="btn ghost tiny">Log out</button>
+          </div>
+        </div>
+        <div id="manage-list" class="manage-list"></div>
+        <div id="manage-empty" class="empty hidden"><p>No catalog entries yet. Click “Add MCP”.</p></div>
       </div>
     </section>
 
@@ -285,6 +328,55 @@
       <div class="modal-actions" id="browse-foot">
         <span class="spacer"></span>
         <button id="browse-close" class="btn ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage entry editor modal -->
+  <div id="manage-modal" class="modal-overlay hidden">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2 id="manage-modal-title">Add MCP</h2>
+      <label class="field">
+        <span class="field-label">MCP name <em>(display title)</em></span>
+        <input id="m-title" type="text" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span class="field-label">Slug / key <em>(unique)</em></span>
+        <input id="m-name" type="text" autocomplete="off" placeholder="e.g. my-server" />
+      </label>
+      <label class="field">
+        <span class="field-label">Description</span>
+        <textarea id="m-desc" rows="2"></textarea>
+      </label>
+      <label class="field">
+        <span class="field-label">Author</span>
+        <input id="m-author" type="text" autocomplete="off" placeholder="e.g. Halim, Platform Engineering" />
+      </label>
+      <label class="field">
+        <span class="field-label">Icon URL <em>(optional)</em></span>
+        <input id="m-icon" type="text" autocomplete="off" placeholder="https://…/icon.png" />
+      </label>
+      <label class="field">
+        <span class="field-label">Command</span>
+        <input id="m-command" type="text" autocomplete="off" placeholder="npx" />
+      </label>
+      <label class="field">
+        <span class="field-label">Arguments <em>(one per line, use {token})</em></span>
+        <textarea id="m-args" rows="5" placeholder="mcp-remote&#10;https://example.com/mcp&#10;--header&#10;Authorization: Bearer {token}"></textarea>
+      </label>
+      <label class="field checkbox-field">
+        <input id="m-reqtoken" type="checkbox" /> <span>Requires a token</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Token hint <em>(optional)</em></span>
+        <input id="m-tokenhint" type="text" autocomplete="off" placeholder="e.g. Your API key" />
+      </label>
+      <div id="manage-modal-error" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button id="manage-modal-delete" class="btn danger hidden">Delete</button>
+        <span class="spacer"></span>
+        <button id="manage-modal-cancel" class="btn ghost">Cancel</button>
+        <button id="manage-modal-save" class="btn primary">Save</button>
       </div>
     </div>
   </div>

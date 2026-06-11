@@ -547,6 +547,127 @@ function handleOpenExternal(_event, url) {
 }
 
 // ---------------------------------------------------------------------------
+// Catalog management (OTP login + CRUD against the WordPress plugin)
+//
+// All network happens here in the main process. The session token from a
+// successful OTP verification is held in memory only (never persisted) and
+// cleared on logout / app quit.
+// ---------------------------------------------------------------------------
+
+let manageToken = null;
+let manageEmail = null;
+
+// Minimal JSON HTTP helper supporting any method + bearer/body.
+function httpJson(method, urlStr, opts = {}) {
+  const { headers = {}, body = null } = opts;
+  return new Promise((resolve) => {
+    let u;
+    try { u = new URL(urlStr); } catch (_) { return resolve({ status: 0, error: 'Bad URL' }); }
+    const lib = u.protocol === 'http:' ? require('http') : https;
+    const payload = body == null ? null : JSON.stringify(body);
+    const reqOpts = {
+      method,
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'mcpui',
+        Accept: 'application/json',
+        ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
+        ...headers,
+      },
+    };
+    const req = lib.request(u, reqOpts, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; if (data.length > 4_000_000) req.destroy(); });
+      res.on('end', () => {
+        let json = null;
+        try { json = data ? JSON.parse(data) : null; } catch (_) { /* non-JSON */ }
+        resolve({ status: res.statusCode, json });
+      });
+    });
+    req.on('error', (e) => resolve({ status: 0, error: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, error: 'timeout' }); });
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+// Derive the plugin's REST base (".../mcp-catalog/v1") from the catalog URL.
+function manageBase() {
+  const catalogUrl = readOverrideSetting('catalogUrl') || DEFAULT_CATALOG_URL;
+  if (!catalogUrl) return null;
+  const noQuery = catalogUrl.split('?')[0].replace(/\/+$/, '');
+  return noQuery.replace(/\/catalog$/i, '');
+}
+
+function authHeaders() {
+  return manageToken ? { Authorization: `Bearer ${manageToken}` } : {};
+}
+
+async function handleManageRequestOtp(_e, email) {
+  const base = manageBase();
+  if (!base) return { ok: false, error: 'No catalog endpoint is configured.' };
+  const r = await httpJson('POST', `${base}/auth/request-otp`, { body: { email } });
+  if (r.status === 429) return { ok: false, error: 'Too many attempts. Please wait a few minutes.' };
+  if (r.status !== 200 || !r.json) return { ok: false, error: r.error || `Request failed (${r.status}).` };
+  return { ok: true, allowed: !!r.json.allowed, sent: !!r.json.sent };
+}
+
+async function handleManageVerifyOtp(_e, email, otp) {
+  const base = manageBase();
+  if (!base) return { ok: false, error: 'No catalog endpoint is configured.' };
+  const r = await httpJson('POST', `${base}/auth/verify-otp`, { body: { email, otp } });
+  if (r.status === 200 && r.json && r.json.ok && r.json.token) {
+    manageToken = r.json.token;
+    manageEmail = r.json.email || email;
+    return { ok: true, email: manageEmail };
+  }
+  return { ok: false, error: (r.json && r.json.error) || 'Invalid or expired code.' };
+}
+
+function handleManageStatus() {
+  return { ok: true, loggedIn: !!manageToken, email: manageEmail };
+}
+
+async function handleManageLogout() {
+  const base = manageBase();
+  if (manageToken && base) {
+    await httpJson('POST', `${base}/auth/logout`, { headers: authHeaders() });
+  }
+  manageToken = null;
+  manageEmail = null;
+  return { ok: true };
+}
+
+// Wrap a manage call: handles "not logged in" and 401 session-expiry uniformly.
+async function manageRequest(method, pathSuffix, body) {
+  if (!manageToken) return { ok: false, error: 'Not signed in.' };
+  const base = manageBase();
+  if (!base) return { ok: false, error: 'No catalog endpoint is configured.' };
+  const r = await httpJson(method, `${base}${pathSuffix}`, { headers: authHeaders(), body });
+  if (r.status === 401) {
+    manageToken = null;
+    manageEmail = null;
+    return { ok: false, expired: true, error: 'Your session expired. Please sign in again.' };
+  }
+  if ((r.status === 200 || r.status === 201) && r.json && r.json.ok) return r.json;
+  return { ok: false, error: (r.json && r.json.error) || `Request failed (${r.status}).` };
+}
+
+function handleManageList() {
+  return manageRequest('GET', '/manage/catalog');
+}
+function handleManageCreate(_e, entry) {
+  return manageRequest('POST', '/manage/catalog', entry);
+}
+function handleManageUpdate(_e, id, entry) {
+  return manageRequest('PUT', `/manage/catalog/${encodeURIComponent(id)}`, entry);
+}
+function handleManageDelete(_e, id) {
+  return manageRequest('DELETE', `/manage/catalog/${encodeURIComponent(id)}`);
+}
+
+// ---------------------------------------------------------------------------
 // Window + app lifecycle
 // ---------------------------------------------------------------------------
 
@@ -582,6 +703,14 @@ app.whenReady().then(() => {
   ipcMain.handle('catalog:browse', handleBrowseCatalog);
   ipcMain.handle('update:check', handleCheckUpdate);
   ipcMain.handle('shell:openExternal', handleOpenExternal);
+  ipcMain.handle('manage:requestOtp', handleManageRequestOtp);
+  ipcMain.handle('manage:verifyOtp', handleManageVerifyOtp);
+  ipcMain.handle('manage:status', handleManageStatus);
+  ipcMain.handle('manage:logout', handleManageLogout);
+  ipcMain.handle('manage:list', handleManageList);
+  ipcMain.handle('manage:create', handleManageCreate);
+  ipcMain.handle('manage:update', handleManageUpdate);
+  ipcMain.handle('manage:delete', handleManageDelete);
 
   createWindow();
 
