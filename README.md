@@ -36,10 +36,14 @@ never touches anything else.
   down to the byte. Don't take our word for it — it's verified against real-world
   configs with dozens of servers.
 
-- **💾 Every save is protected.** Before writing, it creates a timestamped backup,
-  then saves atomically (write-then-rename) so a crash mid-save can never leave you
-  with a corrupted file. If your existing config isn't valid JSON, it refuses to
-  overwrite rather than risk losing data.
+- **💾 Every save is protected.** Before writing, it saves atomically
+  (write-then-rename) so a crash mid-save can never leave you with a corrupted
+  file. If your existing config isn't valid JSON, it refuses to overwrite rather
+  than risk losing data.
+
+- **⏪ One-click rollback.** The app keeps the **10 most recent versions** of your
+  servers automatically. Made a change that broke a tool? Open the **Backups** tab
+  and restore an earlier version in a single click — no manual file juggling.
 
 - **🔍 It finds your config automatically.** No hunting through hidden folders. It
   detects the right file on every platform — including the tricky **Microsoft Store**
