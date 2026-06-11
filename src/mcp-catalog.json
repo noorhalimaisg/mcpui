@@ -1,74 +1,13 @@
 [
   {
     "name": "ai-singapore-shortener",
-    "description": "AI Singapore link shortener API",
+    "title": "AI Singapore Shortener",
+    "description": "Shorten and manage links via the AI Singapore URL shortener API.",
+    "author": "Halim, Platform Engineering",
+    "icon": "",
     "command": "npx",
     "args": ["mcp-remote", "https://aisg.sg/api/v1/mcp", "--header", "Authorization: Bearer {token}"],
     "requiresToken": true,
     "tokenHint": "Your aisg.sg API key"
-  },
-  {
-    "name": "knowfluent",
-    "description": "AISG support knowledge base MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/knowfluent-mcp/v1/mcp", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "knowfluent bearer token"
-  },
-  {
-    "name": "knowmcp",
-    "description": "AISG support knowledge MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/knowmcp/v1/mcp", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "knowmcp bearer token (kmcp_…)"
-  },
-  {
-    "name": "knowseodata",
-    "description": "AISG SEO data MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/knowseodata/v1/mcp", "--header", "X-KnowSEOData-Key: {token}"],
-    "requiresToken": true,
-    "tokenHint": "KnowSEOData key (kseo_…)"
-  },
-  {
-    "name": "section-builder",
-    "description": "AISG support section builder MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/section-builder/v1/mcp", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "section-builder bearer token"
-  },
-  {
-    "name": "knowslider",
-    "description": "AISG slider promo MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/knowsliderpromo/v1/mcp", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "knowslider bearer token (ksp_…)"
-  },
-  {
-    "name": "support-docs",
-    "description": "AISG chat-with-docs MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/chatwithdocs/v1/mcp", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "chat-with-docs token (cwd_…)"
-  },
-  {
-    "name": "aiengine-support",
-    "description": "AISG AI Engine support MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://support.aisingapore.org/wp-json/mcp/v1/http", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "AI Engine bearer token"
-  },
-  {
-    "name": "airi-network",
-    "description": "AIRI network MCP",
-    "command": "npx",
-    "args": ["mcp-remote", "https://airi.sg/wp-json/airi-mcp/v1/rpc", "--header", "Authorization: Bearer {token}"],
-    "requiresToken": true,
-    "tokenHint": "AIRI bearer token"
   }
 ]

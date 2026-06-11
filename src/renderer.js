@@ -443,11 +443,20 @@ async function openBrowse() {
     const div = document.createElement('div');
     div.className = 'browse-entry';
     div.dataset.pick = String(i);
+    const title = entry.title || entry.name || 'mcp-server';
+    const initial = escapeHtml(title.trim().charAt(0).toUpperCase() || '?');
+    const iconHtml = entry.icon
+      ? `<img class="browse-icon-img" src="${escapeHtml(entry.icon)}" alt="" />`
+      : `<span class="browse-icon-fallback">${initial}</span>`;
     div.innerHTML = `
+      <div class="browse-icon">${iconHtml}</div>
       <div class="browse-entry-main">
-        <div class="browse-entry-name">${escapeHtml(entry.name || 'mcp-server')}</div>
+        <div class="browse-entry-name">${escapeHtml(title)}</div>
         ${entry.description ? `<div class="browse-entry-desc">${escapeHtml(entry.description)}</div>` : ''}
-        <div class="browse-entry-url">${escapeHtml(entryUrl(entry).replace(/^https?:\/\//i, ''))}</div>
+        <div class="browse-entry-meta">
+          ${entry.author ? `<span class="browse-author">by ${escapeHtml(entry.author)}</span>` : ''}
+          <span class="browse-entry-url">${escapeHtml(entryUrl(entry).replace(/^https?:\/\//i, ''))}</span>
+        </div>
       </div>
       <span class="add-pill">Add</span>
     `;
@@ -461,9 +470,12 @@ async function openBrowse() {
 function pickEntry(entry) {
   pickedEntry = entry;
   el.browseError.classList.add('hidden');
-  el.browsePickName.textContent = entry.name || 'mcp-server';
-  el.browsePickDesc.textContent = entry.description || '';
-  el.browseName.value = uniqueName(entry.name || 'mcp-server');
+  const slug = (entry.name || entry.title || 'mcp-server')
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  el.browsePickName.textContent = entry.title || entry.name || 'mcp-server';
+  el.browsePickDesc.textContent =
+    (entry.description || '') + (entry.author ? `  ·  by ${entry.author}` : '');
+  el.browseName.value = uniqueName(slug || 'mcp-server');
   el.browseEndpoint.textContent = entryUrl(entry) || '(no URL)';
 
   const needsToken = entry.requiresToken !== false && (entry.args || []).some((a) => a.includes('{token}'));

@@ -6,11 +6,15 @@ const fs = require('fs');
 const https = require('https');
 const core = require('./config-core');
 
-// Where the "Browse MCP" catalog is fetched from when online. The bundled
-// src/mcp-catalog.json is always available as a fallback. Override per-machine
-// by setting "catalogUrl" in the app's mcpui-settings.json.
-const DEFAULT_CATALOG_URL =
-  'https://raw.githubusercontent.com/noorhalimaisg/mcpui/main/src/mcp-catalog.json';
+// The "Browse MCP" catalog has two sources that are MERGED:
+//   1. A small bundled list (src/mcp-catalog.json) — always available offline.
+//      Currently just the AI Singapore Shortener.
+//   2. An online catalog served by the AISG WordPress "MCP Catalog" plugin
+//      (GET /wp-json/mcp-catalog/v1/catalog), which holds everything else and
+//      can be updated without shipping a new app version.
+// Set the WordPress endpoint here once it exists (or per-machine via the
+// "catalogUrl" key in the app's mcpui-settings.json). Empty = bundled only.
+const DEFAULT_CATALOG_URL = '';
 
 // ---------------------------------------------------------------------------
 // Config location
@@ -451,12 +455,29 @@ function fetchRemoteCatalog(url) {
 }
 
 async function handleBrowseCatalog() {
+  const bundled = readBundledCatalog();
   const url = readOverrideSetting('catalogUrl') || DEFAULT_CATALOG_URL;
-  const remote = await fetchRemoteCatalog(url);
-  if (remote && remote.length) {
-    return { ok: true, source: 'remote', url, items: remote };
+
+  let remote = [];
+  let remoteTried = false;
+  let remoteOk = false;
+  if (url) {
+    remoteTried = true;
+    const fetched = await fetchRemoteCatalog(url);
+    if (Array.isArray(fetched)) { remote = fetched; remoteOk = true; }
   }
-  return { ok: true, source: 'bundled', items: readBundledCatalog() };
+
+  // Merge: bundled entries first (canonical, offline), then any online entries
+  // whose name isn't already present.
+  const items = [...bundled];
+  const have = new Set(bundled.map((e) => e && e.name));
+  for (const e of remote) {
+    if (e && e.name && !have.has(e.name)) { items.push(e); have.add(e.name); }
+  }
+
+  let source = 'bundled';
+  if (remoteTried) source = remoteOk ? 'online + bundled' : 'bundled (online unreachable)';
+  return { ok: true, source, items, bundledCount: bundled.length, onlineCount: remote.length };
 }
 
 // ---------------------------------------------------------------------------
