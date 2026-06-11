@@ -433,7 +433,7 @@ async function openBrowse() {
 
   const res = await window.api.browseCatalog();
   const items = (res && res.items) || [];
-  el.browseSource.textContent = res && res.source === 'remote' ? 'online' : 'bundled';
+  el.browseSource.textContent = (res && res.source) || 'bundled';
 
   if (!items.length) {
     el.browseList.innerHTML = '<div class="browse-loading">No catalog entries available.</div>';

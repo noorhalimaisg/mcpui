@@ -456,7 +456,7 @@ function fetchRemoteCatalog(url) {
     let settled = false;
     const done = (val) => { if (!settled) { settled = true; resolve(val); } };
 
-    const req = https.get(url, { timeout: 4000 }, (res) => {
+    const req = https.get(url, { timeout: 8000 }, (res) => {
       if (res.statusCode !== 200) { res.resume(); return done(null); }
       let data = '';
       res.setEncoding('utf8');
@@ -541,7 +541,7 @@ function fetchLatestRelease() {
     // GitHub requires a User-Agent header or it rejects the request.
     const opts = {
       headers: { 'User-Agent': 'mcpui', Accept: 'application/vnd.github+json' },
-      timeout: 4000,
+      timeout: 8000,
     };
     const req = https.get(RELEASES_API, opts, (res) => {
       if (res.statusCode !== 200) { res.resume(); return resolve(null); }
