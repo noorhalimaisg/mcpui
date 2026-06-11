@@ -1,6 +1,6 @@
 {
   "name": "mcpui",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Cross-platform manager for Claude Desktop MCP server endpoints (macOS + Windows).",
   "author": "AI Singapore",
   "license": "MIT",
