@@ -169,6 +169,22 @@ function readRoot(configPath) {
   return { root, existed: true, parseError };
 }
 
+// The app's own library: the full server list (incl. disabled servers, which
+// never appear in Claude's config). Persisted in our settings file so disabled
+// servers survive restarts.
+function readServerLibrary() {
+  try {
+    const s = JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+    return Array.isArray(s.serverLibrary) ? s.serverLibrary : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeServerLibrary(arr) {
+  writeSetting('serverLibrary', Array.isArray(arr) ? arr : []);
+}
+
 function handleLocate() {
   const configPath = activeConfigPath();
   // Report which candidate locations were detected, so the user can see whether
@@ -192,7 +208,21 @@ function handleRead() {
     return { ok: false, path: configPath, error: `Could not parse config: ${parseError}` };
   }
 
-  const servers = core.serverObjectToArray(root.mcpServers);
+  const library = readServerLibrary();
+  let servers;
+  if (!existed) {
+    // No Claude config file yet — show the library as-is so we don't drop
+    // anything just because the file is missing.
+    servers = library;
+  } else {
+    // Reconcile the live Claude config (active set) with our saved library so
+    // disabled servers persist, external additions appear, and external
+    // removals drop out. Persist the reconciled library for next time.
+    const disk = core.serverObjectToArray(root.mcpServers);
+    servers = core.reconcileServers(disk, library);
+    writeServerLibrary(servers);
+  }
+
   // Names of the other top-level keys we will preserve untouched.
   const preservedKeys = Object.keys(root).filter((k) => k !== 'mcpServers');
 
@@ -390,6 +420,10 @@ function handleSave(_event, serverArray) {
   const tmpPath = `${configPath}.tmp-${process.pid}`;
   fs.writeFileSync(tmpPath, core.serialize(finalRoot), 'utf8');
   fs.renameSync(tmpPath, configPath);
+
+  // Persist the FULL list (including disabled servers) to the app's library so
+  // disabled servers survive restarts even though they aren't in Claude's config.
+  writeServerLibrary(serverArray);
 
   return {
     ok: true,

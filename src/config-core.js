@@ -74,10 +74,46 @@ function serialize(root) {
   return JSON.stringify(root, null, 2) + '\n';
 }
 
+// Reconcile the app's saved library (full list incl. disabled) with what's
+// actually on disk in Claude's config (the active/enabled set). Rules:
+//   - On disk            -> active (enabled), using the on-disk config (Claude
+//                           is the source of truth for active servers).
+//   - In library, OFF, not on disk  -> kept as disabled (lives only in the app).
+//   - In library, ON, but missing from disk -> removed externally -> dropped.
+//   - On disk, not in library        -> added externally -> appended as enabled.
+// Library order is preserved; external additions are appended.
+function reconcileServers(diskServers, library) {
+  const disk = Array.isArray(diskServers) ? diskServers : [];
+  const lib = Array.isArray(library) ? library : [];
+  const diskByName = new Map(disk.map((s) => [s.name, s]));
+  const libNames = new Set(lib.map((s) => s.name));
+  const result = [];
+  const used = new Set();
+
+  for (const entry of lib) {
+    const onDisk = diskByName.get(entry.name);
+    if (onDisk) {
+      result.push({ ...onDisk, enabled: true });
+      used.add(entry.name);
+    } else if (entry.enabled === false) {
+      result.push({ ...entry, enabled: false });
+    }
+    // else: was enabled but no longer on disk -> removed externally -> drop.
+  }
+  for (const d of disk) {
+    if (!libNames.has(d.name) && !used.has(d.name)) {
+      result.push({ ...d, enabled: true });
+      used.add(d.name);
+    }
+  }
+  return result;
+}
+
 module.exports = {
   serverObjectToArray,
   arrayToServerObject,
   parseRoot,
   mergeServers,
   serialize,
+  reconcileServers,
 };

@@ -133,4 +133,50 @@ test('a brand-new config (no other keys) still works', () => {
   assert.ok(root.mcpServers.solo);
 });
 
+// --- reconcileServers (local library vs Claude config on disk) -------------
+function mk(name, enabled) {
+  return { name, command: 'npx', args: [name], env: {}, extra: {}, enabled };
+}
+
+test('reconcile: disabled servers persist across restart (3 on disk, 2 disabled kept)', () => {
+  const library = [mk('A', true), mk('B', true), mk('C', true), mk('D', false), mk('E', false)];
+  const disk = [mk('A', true), mk('B', true), mk('C', true)]; // only enabled were saved
+  const out = core.reconcileServers(disk, library);
+  assert.strictEqual(out.length, 5);
+  assert.deepStrictEqual(out.map((s) => s.name), ['A', 'B', 'C', 'D', 'E']);
+  assert.deepStrictEqual(out.filter((s) => s.enabled === false).map((s) => s.name), ['D', 'E']);
+});
+
+test('reconcile: a server added externally to the Claude config shows up (5 -> 6)', () => {
+  const library = [mk('A', true), mk('B', true), mk('C', true), mk('D', false), mk('E', false)];
+  const disk = [mk('A', true), mk('B', true), mk('C', true), mk('F', true)]; // F added by hand
+  const out = core.reconcileServers(disk, library);
+  assert.strictEqual(out.length, 6);
+  assert.ok(out.find((s) => s.name === 'F' && s.enabled === true));
+});
+
+test('reconcile: an externally-removed server disappears (6 -> 5)', () => {
+  const library = [mk('A', true), mk('B', true), mk('C', true), mk('D', false), mk('E', false), mk('F', true)];
+  const disk = [mk('A', true), mk('B', true), mk('C', true)]; // F removed by hand
+  const out = core.reconcileServers(disk, library);
+  assert.strictEqual(out.length, 5);
+  assert.ok(!out.find((s) => s.name === 'F'));
+  assert.deepStrictEqual(out.filter((s) => s.enabled === false).map((s) => s.name), ['D', 'E']);
+});
+
+test('reconcile: external edits to an active server are picked up from disk', () => {
+  const library = [mk('A', true)];
+  library[0].args = ['old'];
+  const disk = [{ name: 'A', command: 'npx', args: ['new'], env: {}, extra: {}, enabled: true }];
+  const out = core.reconcileServers(disk, library);
+  assert.deepStrictEqual(out[0].args, ['new']);
+});
+
+test('reconcile: empty library mirrors disk (first run)', () => {
+  const disk = [mk('A', true), mk('B', true)];
+  const out = core.reconcileServers(disk, []);
+  assert.deepStrictEqual(out.map((s) => s.name), ['A', 'B']);
+  assert.ok(out.every((s) => s.enabled === true));
+});
+
 console.log(`\n${passed} tests passed.`);
